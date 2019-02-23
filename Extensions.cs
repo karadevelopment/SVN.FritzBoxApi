@@ -49,5 +49,18 @@ namespace SVN.FritzBoxApi
 
             return element.GetValue<T>();
         }
+
+        public static T GetXmlValue<T>(this string xml, string key)
+        {
+            var document = XDocument.Parse(xml);
+            var value = document.Descendants(key).Select(x => x.Value).DefaultIfEmpty(null).First();
+
+            if (value is null)
+            {
+                return default(T);
+            }
+
+            return (T)Convert.ChangeType(value, typeof(T));
+        }
     }
 }

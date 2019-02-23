@@ -15,7 +15,7 @@ namespace SVN.FritzBoxApi.DataTransferObjects
 
         public bool IsConnected
         {
-            get => this.SID != Constants.DefaultSID;
+            get => this.SID != Constants.SID_DEFAULT;
         }
 
         private Session()
@@ -24,7 +24,7 @@ namespace SVN.FritzBoxApi.DataTransferObjects
 
         private static Session FromDocument(XDocument document)
         {
-            var sid = document.GetValue<string>("SID") ?? Constants.DefaultSID;
+            var sid = document.GetValue<string>("SID") ?? Constants.SID_DEFAULT;
             var challenge = document.GetValue<string>("Challenge") ?? string.Empty;
             var blockTime = document.GetValue<int>("BlockTime");
             var rights = new List<SessionRight>();
@@ -77,10 +77,9 @@ namespace SVN.FritzBoxApi.DataTransferObjects
             return Session.FromDocument(document);
         }
 
-        public static Session Destroy(string url, string sid)
+        public static void Destroy(string url, string sid)
         {
-            var document = XDocument.Load($"{url}/login_sid.lua?logout=1&sid={sid}");
-            return Session.FromDocument(document);
+            XDocument.Load($"{url}/login_sid.lua?logout=1&sid={sid}");
         }
 
         public override string ToString()

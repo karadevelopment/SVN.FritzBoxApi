@@ -1,4 +1,5 @@
 ﻿using SVN.FritzBoxApi.DataTransferObjects;
+using SVN.Reflection.Helpers;
 using System;
 using System.IO;
 using System.Net;
@@ -19,7 +20,7 @@ namespace SVN.FritzBoxApi.Logic
 
         private string SID
         {
-            get => this.Session?.SID ?? Constants.DefaultSID;
+            get => this.Session?.SID ?? Constants.SID_DEFAULT;
         }
 
         public FritzBox(string url = "http://fritz.box")
@@ -51,7 +52,7 @@ namespace SVN.FritzBoxApi.Logic
         {
             this.Session = Session.FromResponse(this.URL, username, password);
 
-            if (this.Session.SID == Constants.DefaultSID)
+            if (this.Session.SID == Constants.SID_DEFAULT)
             {
                 var response = this.BuildResponse(this.Session.Challenge, password);
                 this.Session = Session.FromResponse(this.URL, username, response);
@@ -60,13 +61,13 @@ namespace SVN.FritzBoxApi.Logic
 
         public void Logout()
         {
-            this.Session = Session.Destroy(this.URL, this.SID);
+            Session.Destroy(this.URL, this.SID);
+            this.Session = null;
         }
 
         private string ReadResource(string name)
         {
-            // TODO
-            return string.Empty;
+            return Assembly.GetResource(name);
         }
 
         private string ExecuteCommand(string cmd)
@@ -123,7 +124,9 @@ namespace SVN.FritzBoxApi.Logic
 
         public string GetExternalIPAddress()
         {
-            return this.ExecuteCommand("GetExternalIPAddress");
+            var xml = this.ExecuteCommand("GetExternalIPAddress");
+            var value = xml.GetXmlValue<string>("NewExternalIPAddress");
+            return value;
         }
 
         public void Reconnect()
@@ -133,7 +136,7 @@ namespace SVN.FritzBoxApi.Logic
 
         public override string ToString()
         {
-            return this.Session?.ToString() ?? $"SID: {Constants.DefaultSID}";
+            return this.Session?.ToString() ?? $"SID: {Constants.SID_DEFAULT}";
         }
     }
 }

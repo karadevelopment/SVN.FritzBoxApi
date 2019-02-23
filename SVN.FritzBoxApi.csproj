@@ -54,6 +54,10 @@
       <Project>{4977ffe4-f923-4204-b081-17377ff5811e}</Project>
       <Name>SVN.Debug</Name>
     </ProjectReference>
+    <ProjectReference Include="..\SVN.Reflection\SVN.Reflection.csproj">
+      <Project>{419597b6-d215-427b-b1a3-52ad07a5dadb}</Project>
+      <Name>SVN.Reflection</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="nuget.nuspec" />

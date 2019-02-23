@@ -2,6 +2,6 @@
 {
     internal static class Constants
     {
-        public const string DefaultSID = "0000000000000000";
+        public const string SID_DEFAULT = "0000000000000000";
     }
 }
