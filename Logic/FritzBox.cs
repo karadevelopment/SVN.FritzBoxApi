@@ -1,10 +1,13 @@
 ﻿using SVN.FritzBoxApi.DataTransferObjects;
-using SVN.Reflection.Helpers;
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 
 namespace SVN.FritzBoxApi.Logic
 {
@@ -65,12 +68,39 @@ namespace SVN.FritzBoxApi.Logic
             this.Session = null;
         }
 
-        private string ReadResource(string name)
+        private IEnumerable<Stream> GetResources(string name)
         {
-            return Assembly.GetResource(name);
+            var assembly = Assembly.GetExecutingAssembly();
+            var resources = assembly.GetManifestResourceNames();
+
+            foreach (var resource in resources.Where(x => x.EndsWith(name)))
+            {
+                var filename = resource;
+
+                while (2 <= filename.Count(x => x == '.'))
+                {
+                    filename = filename.Substring(filename.IndexOf('.') + 1);
+                }
+
+                yield return assembly.GetManifestResourceStream(resource);
+            }
         }
 
-        private string ExecuteCommand(string cmd)
+
+        private string ReadResource(string name)
+        {
+            foreach (var stream in this.GetResources(name))
+            {
+                using (var reader = new StreamReader(stream))
+                {
+                    return reader.ReadToEnd();
+                }
+            }
+
+            return string.Empty;
+        }
+
+        private string ExecuteCommand(string location, string action, string urn, string username, string password)
         {
             //var url = $"{this.URL}/webservices/homeautoswitch.lua?ain={this.MacAddress}&switchcmd={cmd}&sid={this.SID}";
 
@@ -98,17 +128,23 @@ namespace SVN.FritzBoxApi.Logic
             //    }
             //}
 
-            var url = "http://fritz.box:49000/igdupnp/control/WANIPConn1";
-            var xml = this.ReadResource($"{cmd}.xml");
+            location = $"{this.URL}:49000/{location}";
+            var soapaction = $"{urn}#{action}";
+            var xml = this.ReadResource("Template.xml").Replace("{action}", action).Replace("{urn}", urn);
 
-            var request = WebRequest.Create(url) as HttpWebRequest;
+            var request = WebRequest.Create(location) as HttpWebRequest;
             request.Method = "POST";
             request.ContentType = "text/xml; charset=utf-8";
-            request.Headers.Add("SOAPACTION", $"urn:schemas-upnp-org:service:WANIPConnection:1#{cmd}");
+            request.Headers.Add("location", location);
+            request.Headers.Add("uri", urn);
+            request.Headers.Add("soapaction", soapaction);
+            //request.Headers.Add("login", username);
+            //request.Headers.Add("password", password);
+            request.Headers.Add("noroot", "True");
             request.ProtocolVersion = HttpVersion.Version11;
-            request.Credentials = CredentialCache.DefaultCredentials;
+            request.Credentials = new NetworkCredential(username, password);
             request.ContentLength = xml.Length;
-            
+
             using (var stream = request.GetRequestStream())
             using (var writer = new StreamWriter(stream, Encoding.ASCII))
             {
@@ -124,14 +160,37 @@ namespace SVN.FritzBoxApi.Logic
 
         public string GetExternalIPAddress()
         {
-            var xml = this.ExecuteCommand("GetExternalIPAddress");
+            var xml = this.ExecuteCommand("igdupnp/control/WANIPConn1", "GetExternalIPAddress", "urn:schemas-upnp-org:service:WANIPConnection:1", null, null);
             var value = xml.GetXmlValue<string>("NewExternalIPAddress");
             return value;
         }
 
         public void Reconnect()
         {
-            this.ExecuteCommand("ForceTermination");
+            this.ExecuteCommand("igdupnp/control/WANIPConn1", "ForceTermination", "urn:schemas-upnp-org:service:WANIPConnection:1", null, null);
+        }
+
+        public void Reboot(string username, string password)
+        {
+            this.ExecuteCommand("upnp/control/deviceconfig", "Reboot", "urn:dslforum-org:service:DeviceConfig:1", username, password);
+
+            while (true)
+            {
+                Thread.Sleep(TimeSpan.FromSeconds(10));
+
+                try
+                {
+                    var ip = this.GetExternalIPAddress();
+                    
+                    if (!string.IsNullOrWhiteSpace(ip))
+                    {
+                        return;
+                    }
+                }
+                catch (WebException)
+                {
+                }
+            }
         }
 
         public override string ToString()
