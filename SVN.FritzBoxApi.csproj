@@ -63,8 +63,7 @@
     <None Include="nuget.nuspec" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Resources\ForceTermination.xml" />
-    <EmbeddedResource Include="Resources\GetExternalIPAddress.xml" />
+    <EmbeddedResource Include="Resources\Template.xml" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

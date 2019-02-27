@@ -1,10 +1,8 @@
 ﻿using SVN.FritzBoxApi.DataTransferObjects;
+using SVN.Reflection.Helpers;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net;
-using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -68,39 +66,12 @@ namespace SVN.FritzBoxApi.Logic
             this.Session = null;
         }
 
-        private IEnumerable<Stream> GetResources(string name)
-        {
-            var assembly = Assembly.GetExecutingAssembly();
-            var resources = assembly.GetManifestResourceNames();
-
-            foreach (var resource in resources.Where(x => x.EndsWith(name)))
-            {
-                var filename = resource;
-
-                while (2 <= filename.Count(x => x == '.'))
-                {
-                    filename = filename.Substring(filename.IndexOf('.') + 1);
-                }
-
-                yield return assembly.GetManifestResourceStream(resource);
-            }
-        }
-
-
         private string ReadResource(string name)
         {
-            foreach (var stream in this.GetResources(name))
-            {
-                using (var reader = new StreamReader(stream))
-                {
-                    return reader.ReadToEnd();
-                }
-            }
-
-            return string.Empty;
+            return Assembly.GetResource(name);
         }
 
-        private string ExecuteCommand(string location, string action, string urn, string username, string password)
+        private string ExecuteCommand(string location, string action, string urn, string username = null, string password = null)
         {
             //var url = $"{this.URL}/webservices/homeautoswitch.lua?ain={this.MacAddress}&switchcmd={cmd}&sid={this.SID}";
 
@@ -160,14 +131,14 @@ namespace SVN.FritzBoxApi.Logic
 
         public string GetExternalIPAddress()
         {
-            var xml = this.ExecuteCommand("igdupnp/control/WANIPConn1", "GetExternalIPAddress", "urn:schemas-upnp-org:service:WANIPConnection:1", null, null);
+            var xml = this.ExecuteCommand("igdupnp/control/WANIPConn1", "GetExternalIPAddress", "urn:schemas-upnp-org:service:WANIPConnection:1");
             var value = xml.GetXmlValue<string>("NewExternalIPAddress");
             return value;
         }
 
         public void Reconnect()
         {
-            this.ExecuteCommand("igdupnp/control/WANIPConn1", "ForceTermination", "urn:schemas-upnp-org:service:WANIPConnection:1", null, null);
+            this.ExecuteCommand("igdupnp/control/WANIPConn1", "ForceTermination", "urn:schemas-upnp-org:service:WANIPConnection:1");
         }
 
         public void Reboot(string username, string password)
@@ -181,7 +152,7 @@ namespace SVN.FritzBoxApi.Logic
                 try
                 {
                     var ip = this.GetExternalIPAddress();
-                    
+
                     if (!string.IsNullOrWhiteSpace(ip))
                     {
                         return;
